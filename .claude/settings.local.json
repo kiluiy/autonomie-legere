@@ -10,7 +10,9 @@
       "Bash(start http://localhost:5175)",
       "Bash(start http://localhost:5176)",
       "Bash(start http://localhost:5173)",
-      "Bash(start http://localhost:5174)"
+      "Bash(start http://localhost:5174)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
