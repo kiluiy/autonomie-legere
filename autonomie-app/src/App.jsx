@@ -216,7 +216,7 @@ function App() {
     <div className="app">
       <header className="header">
         <h1>⚡ Autonomie Légère</h1>
-        <p className="subtitle">Calculateur d'installation solaire</p>
+        <p className="subtitle">Calculateur d'installation solaire <span style={{fontSize: '0.75em', color: '#10b981', marginLeft: '1rem'}}>v1.0 🚀</span></p>
       </header>
 
       <nav className="tabs">
