@@ -5,6 +5,7 @@
 
 const STORAGE_KEY = 'autonomie_projets';
 const CURRENT_PROJECT_KEY = 'autonomie_projet_actuel';
+const PROFILS_PERSONNALISES_KEY = 'autonomie_profils_personnalises';
 
 /**
  * Sauvegarde un projet
@@ -136,6 +137,81 @@ export function importerProjetJSON(file) {
     reader.onerror = () => reject(new Error('Erreur lecture fichier'));
     reader.readAsText(file);
   });
+}
+
+/**
+ * GESTION DES PROFILS PERSONNALISÉS
+ */
+
+/**
+ * Sauvegarde un profil personnalisé (liste d'appareils)
+ */
+export function sauvegarderProfilPersonnalise(nom, appareils) {
+  try {
+    const profils = chargerProfilsPersonnalises();
+    const nouveauProfil = {
+      id: Date.now().toString(),
+      nom,
+      appareils: appareils.map(app => ({
+        nom: app.nom,
+        puissance: app.puissance,
+        heuresJour: app.heuresJour
+      })),
+      dateCreation: new Date().toISOString()
+    };
+
+    // Vérifier si un profil avec ce nom existe déjà
+    const index = profils.findIndex(p => p.nom.toLowerCase() === nom.toLowerCase());
+    if (index >= 0) {
+      // Remplacer le profil existant
+      profils[index] = nouveauProfil;
+    } else {
+      // Ajouter le nouveau profil
+      profils.push(nouveauProfil);
+    }
+
+    localStorage.setItem(PROFILS_PERSONNALISES_KEY, JSON.stringify(profils));
+    return true;
+  } catch (error) {
+    console.error('Erreur sauvegarde profil personnalisé:', error);
+    return false;
+  }
+}
+
+/**
+ * Charge tous les profils personnalisés
+ */
+export function chargerProfilsPersonnalises() {
+  try {
+    const data = localStorage.getItem(PROFILS_PERSONNALISES_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Erreur chargement profils personnalisés:', error);
+    return [];
+  }
+}
+
+/**
+ * Charge un profil personnalisé par son nom
+ */
+export function chargerProfilPersonnalise(nom) {
+  const profils = chargerProfilsPersonnalises();
+  return profils.find(p => p.nom.toLowerCase() === nom.toLowerCase());
+}
+
+/**
+ * Supprime un profil personnalisé
+ */
+export function supprimerProfilPersonnalise(id) {
+  try {
+    const profils = chargerProfilsPersonnalises();
+    const nouveauxProfils = profils.filter(p => p.id !== id);
+    localStorage.setItem(PROFILS_PERSONNALISES_KEY, JSON.stringify(nouveauxProfils));
+    return true;
+  } catch (error) {
+    console.error('Erreur suppression profil personnalisé:', error);
+    return false;
+  }
 }
 
 /**

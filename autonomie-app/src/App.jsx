@@ -22,7 +22,10 @@ import {
   getPaysDuContinent,
   getRegionsDuPays,
   getDepartementsDeLaRegion,
-  exporterProjetJSON
+  exporterProjetJSON,
+  sauvegarderProfilPersonnalise,
+  chargerProfilsPersonnalises,
+  supprimerProfilPersonnalise
 } from './utils/storage';
 import { rechercherEtOptimiser, SITES_MARCHANDS } from './utils/rechercherProduits';
 import { getApiStatus, getInstallationGuide } from './utils/apiIntegrations';
@@ -35,6 +38,9 @@ function App() {
   const [rechercheEnCours, setRechercheEnCours] = useState(false);
   const [progressRecherche, setProgressRecherche] = useState(null);
   const [resultatsRecherche, setResultatsRecherche] = useState(null);
+  const [profilsPersonnalises, setProfilsPersonnalises] = useState([]);
+  const [afficherSauvegardeProfil, setAfficherSauvegardeProfil] = useState(false);
+  const [nomNouveauProfil, setNomNouveauProfil] = useState('');
   const [parametres, setParametres] = useState({
     continent: 'europe',
     pays: 'france',
@@ -64,6 +70,8 @@ function App() {
       setProjetActuel(nouveauProjet);
       definirProjetActuel(nouveauProjet.id);
     }
+    // Charger les profils personnalisés
+    setProfilsPersonnalises(chargerProfilsPersonnalises());
   }, []);
 
   // Sauvegarder automatiquement
@@ -99,6 +107,47 @@ function App() {
       id: Date.now() + index,
     }));
     setAppareils(appareilsProfil);
+  };
+
+  const sauvegarderProfilActuel = () => {
+    if (appareils.length === 0) {
+      alert('Ajoutez au moins un appareil avant de sauvegarder un profil');
+      return;
+    }
+    if (!nomNouveauProfil.trim()) {
+      alert('Donnez un nom à votre profil');
+      return;
+    }
+    const succes = sauvegarderProfilPersonnalise(nomNouveauProfil.trim(), appareils);
+    if (succes) {
+      setProfilsPersonnalises(chargerProfilsPersonnalises());
+      setAfficherSauvegardeProfil(false);
+      setNomNouveauProfil('');
+      alert(`Profil "${nomNouveauProfil}" sauvegardé avec succès !`);
+    } else {
+      alert('Erreur lors de la sauvegarde du profil');
+    }
+  };
+
+  const chargerProfilPersonnaliseById = (id) => {
+    const profil = profilsPersonnalises.find(p => p.id === id);
+    if (profil) {
+      const appareilsProfil = profil.appareils.map((app, index) => ({
+        ...app,
+        id: Date.now() + index,
+      }));
+      setAppareils(appareilsProfil);
+    }
+  };
+
+  const supprimerProfilPersonnaliseById = (id) => {
+    const profil = profilsPersonnalises.find(p => p.id === id);
+    if (profil && window.confirm(`Supprimer le profil "${profil.nom}" ?`)) {
+      const succes = supprimerProfilPersonnalise(id);
+      if (succes) {
+        setProfilsPersonnalises(chargerProfilsPersonnalises());
+      }
+    }
   };
 
   const calculer = () => {
@@ -256,6 +305,14 @@ function App() {
             supprimerAppareil={supprimerAppareil}
             modifierAppareil={modifierAppareil}
             chargerProfil={chargerProfil}
+            profilsPersonnalises={profilsPersonnalises}
+            chargerProfilPersonnaliseById={chargerProfilPersonnaliseById}
+            supprimerProfilPersonnaliseById={supprimerProfilPersonnaliseById}
+            afficherSauvegardeProfil={afficherSauvegardeProfil}
+            setAfficherSauvegardeProfil={setAfficherSauvegardeProfil}
+            nomNouveauProfil={nomNouveauProfil}
+            setNomNouveauProfil={setNomNouveauProfil}
+            sauvegarderProfilActuel={sauvegarderProfilActuel}
           />
         )}
 
@@ -292,7 +349,21 @@ function App() {
 }
 
 // Composant Section Appareils
-function AppareilsSection({ appareils, ajouterAppareil, supprimerAppareil, modifierAppareil, chargerProfil }) {
+function AppareilsSection({
+  appareils,
+  ajouterAppareil,
+  supprimerAppareil,
+  modifierAppareil,
+  chargerProfil,
+  profilsPersonnalises,
+  chargerProfilPersonnaliseById,
+  supprimerProfilPersonnaliseById,
+  afficherSauvegardeProfil,
+  setAfficherSauvegardeProfil,
+  nomNouveauProfil,
+  setNomNouveauProfil,
+  sauvegarderProfilActuel
+}) {
   const [categorieSelectionnee, setCategorieSelectionnee] = useState('cuisine');
   const [appareilSelectionne, setAppareilSelectionne] = useState(null);
 
@@ -327,6 +398,69 @@ function AppareilsSection({ appareils, ajouterAppareil, supprimerAppareil, modif
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="profils profils-personnalises">
+        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+          <h3>Mes profils personnalisés</h3>
+          <button
+            onClick={() => setAfficherSauvegardeProfil(!afficherSauvegardeProfil)}
+            className="btn-primary btn-small"
+            title="Sauvegarder les appareils actuels comme un profil"
+          >
+            {afficherSauvegardeProfil ? '✕ Annuler' : '💾 Sauvegarder le profil actuel'}
+          </button>
+        </div>
+
+        {afficherSauvegardeProfil && (
+          <div className="sauvegarder-profil" style={{marginTop: '1rem', padding: '1rem', background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)', borderRadius: '8px', border: '2px solid #0ea5e9'}}>
+            <p style={{marginBottom: '0.5rem', fontSize: '0.95rem'}}>Donner un nom à votre profil :</p>
+            <div style={{display: 'flex', gap: '0.5rem'}}>
+              <input
+                type="text"
+                value={nomNouveauProfil}
+                onChange={(e) => setNomNouveauProfil(e.target.value)}
+                placeholder="Ex: Maison, Bureau, Camping-car..."
+                style={{flex: 1, padding: '0.75rem', fontSize: '1rem', borderRadius: '6px', border: '2px solid #0ea5e9'}}
+                onKeyPress={(e) => e.key === 'Enter' && sauvegarderProfilActuel()}
+              />
+              <button onClick={sauvegarderProfilActuel} className="btn-primary">
+                💾 Enregistrer
+              </button>
+            </div>
+          </div>
+        )}
+
+        {profilsPersonnalises.length === 0 ? (
+          <p style={{color: '#64748b', fontStyle: 'italic', marginTop: '0.5rem'}}>
+            Aucun profil sauvegardé. Ajoutez des appareils et cliquez sur "Sauvegarder le profil actuel".
+          </p>
+        ) : (
+          <div className="profils-buttons" style={{marginTop: '1rem'}}>
+            {profilsPersonnalises.map(profil => (
+              <div key={profil.id} style={{position: 'relative', display: 'inline-block'}}>
+                <button
+                  onClick={() => chargerProfilPersonnaliseById(profil.id)}
+                  className="btn-secondary"
+                  title={`${profil.appareils.length} appareil(s) - Créé le ${new Date(profil.dateCreation).toLocaleDateString()}`}
+                >
+                  {profil.nom} ({profil.appareils.length})
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    supprimerProfilPersonnaliseById(profil.id);
+                  }}
+                  className="btn-danger btn-small"
+                  style={{position: 'absolute', top: '-8px', right: '-8px', width: '24px', height: '24px', padding: '0', fontSize: '14px', borderRadius: '50%'}}
+                  title={`Supprimer le profil "${profil.nom}"`}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="ajouter-appareil">
